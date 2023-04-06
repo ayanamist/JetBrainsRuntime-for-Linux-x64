@@ -2,16 +2,6 @@ name: jbr-linux-x64
 
 on:
   workflow_dispatch:
-    inputs:
-      release_id:
-        required: true
-        default: 'latest'
-        type: string
-        description: "Release id or tag"
-      jbr_branch:
-        required: false
-        type: string
-        description: "JBR branch"
 
 jobs:
   build:
@@ -23,46 +13,27 @@ jobs:
     - name: Generate Variables
       id: vars
       run: |
-        release_id='${{ github.event.inputs.release_id }}'
-        if [[ -z "$release_id" ]]; then
-          release_id=latest
-        elif [[ "$release_id" != latest && "$release_id" != tags/* ]]; then
-          release_id="tags/$release_id"
-        fi
-        curl -H "authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -sfL -m 60 -o /tmp/latest.json "${{ github.api_url }}/repos/JetBrains/JetBrainsRuntime/releases/${release_id}"
-
-        release_name=$(jq -r .name /tmp/latest.json)
+        release_name="Hotfix 17.0.6-b894.3"
         echo "Release: $release_name"
         echo "release_name=$release_name" >> $GITHUB_OUTPUT
 
-        html_url=$(jq -r .html_url /tmp/latest.json)
+        html_url="https://youtrack.jetbrains.com/issue/JBR-5417/IDE-flicker-with-two-monitors#focus=Comments-27-7062203.0-0"
         echo "Release URL: $html_url"
         echo "release_body=$html_url" >> $GITHUB_OUTPUT
 
-        tag_name=$(jq -r .tag_name /tmp/latest.json)
+        tag_name="jbr-release-17.0.6b894.3"
         echo "Tag: $tag_name"
         echo "tag_name=$tag_name" >> $GITHUB_OUTPUT
 
-        if [[ "$tag_name" == jbr17* ]]; then
-          JBSDK_VERSION=$(sed -E 's/^jbr([0-9_.]+)b.*$/\1/' <<< "$tag_name")
-          build_number=$(sed -E 's/^jbr[0-9_.]+b([0-9.]+)$/\1/' <<< "$tag_name")
-        elif [[ "$tag_name" == jbr-release-17.* ]]; then
-          JBSDK_VERSION=$(sed -E 's/^jbr-release-([0-9_.]+)b.*$/\1/' <<< "$tag_name")
-          build_number=$(sed -E 's/^jbr-release-[0-9_.]+b([0-9.]+)$/\1/' <<< "$tag_name")
-        else
-          echo unknown tag name: $tag_name
-          exit 1
-        fi
+        JBSDK_VERSION=17.0.6
+        build_number=894.3
 
         echo "JBSDK Version: $JBSDK_VERSION"
         echo "JBSDK_VERSION=$JBSDK_VERSION" >> $GITHUB_OUTPUT
         echo "Build Number: $build_number"
         echo "build_number=$build_number" >> $GITHUB_OUTPUT
 
-        ref='${{ github.event.inputs.jbr_branch }}'
-        if [[ -z "$ref" ]]; then
-          ref="jb${JBSDK_VERSION}-b${build_number}"
-        fi
+        ref='jbr17.894'
         echo "Ref: $ref"
         echo "ref=$ref" >> $GITHUB_OUTPUT
 
