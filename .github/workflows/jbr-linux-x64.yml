@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Clone Repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Generate Variables
       id: vars
@@ -86,7 +86,7 @@ jobs:
         rm -f ../jbrsdk_jcef.tgz
 
     - name: Clone JBR Repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: JetBrains/JetBrainsRuntime
         ref: ${{ steps.vars.outputs.ref }}

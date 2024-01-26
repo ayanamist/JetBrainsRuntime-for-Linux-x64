@@ -1,5 +1,5 @@
 diff --git a/src/java.desktop/share/classes/java/awt/Container.java b/src/java.desktop/share/classes/java/awt/Container.java
-index ec6913057d8..c9ca9cbf11e 100644
+index dc5bb4a408e..335de26ad98 100644
 --- a/src/java.desktop/share/classes/java/awt/Container.java
 +++ b/src/java.desktop/share/classes/java/awt/Container.java
 @@ -25,6 +25,7 @@
@@ -26,7 +26,7 @@ index ec6913057d8..c9ca9cbf11e 100644
       * Detects whether or not remove from current parent and adding to new parent requires call of
       * removeNotify on the component. Since removeNotify destroys native window this might (not)
 diff --git a/src/java.desktop/share/classes/javax/swing/JTextArea.java b/src/java.desktop/share/classes/javax/swing/JTextArea.java
-index 03b3bc7e9bd..7bd43f5829b 100644
+index ecc9342f05a..eea39c9e03a 100644
 --- a/src/java.desktop/share/classes/javax/swing/JTextArea.java
 +++ b/src/java.desktop/share/classes/javax/swing/JTextArea.java
 @@ -562,6 +562,14 @@ public class JTextArea extends JTextComponent {
@@ -45,7 +45,7 @@ index 03b3bc7e9bd..7bd43f5829b 100644
       * Returns the number of columns in the TextArea.
       *
 diff --git a/src/java.desktop/share/classes/javax/swing/JTextField.java b/src/java.desktop/share/classes/javax/swing/JTextField.java
-index 0d66209d8af..363ac03514b 100644
+index 3abe09d0565..50dc549bdba 100644
 --- a/src/java.desktop/share/classes/javax/swing/JTextField.java
 +++ b/src/java.desktop/share/classes/javax/swing/JTextField.java
 @@ -427,6 +427,14 @@ public class JTextField extends JTextComponent implements SwingConstants {
@@ -64,7 +64,7 @@ index 0d66209d8af..363ac03514b 100644
       * Returns the preferred size <code>Dimensions</code> needed for this
       * <code>TextField</code>.  If a non-zero number of columns has been
 diff --git a/src/java.desktop/share/classes/sun/awt/im/InputContext.java b/src/java.desktop/share/classes/sun/awt/im/InputContext.java
-index 237164a9d42..9a16e75ff46 100644
+index bb955dc5089..7c42e2aa685 100644
 --- a/src/java.desktop/share/classes/sun/awt/im/InputContext.java
 +++ b/src/java.desktop/share/classes/sun/awt/im/InputContext.java
 @@ -28,6 +28,7 @@ package sun.awt.im;
@@ -164,34 +164,28 @@ index 237164a9d42..9a16e75ff46 100644
       * Activates the current input method of this input context, and grabs
       * the composition area for use by this input context.
 diff --git a/src/java.desktop/unix/classes/sun/awt/X11/XInputMethod.java b/src/java.desktop/unix/classes/sun/awt/X11/XInputMethod.java
-index 2afd7bbefdb..2be981523ed 100644
+index 26afc6e2de3..11ab161be59 100644
 --- a/src/java.desktop/unix/classes/sun/awt/X11/XInputMethod.java
 +++ b/src/java.desktop/unix/classes/sun/awt/X11/XInputMethod.java
-@@ -28,10 +28,21 @@ package sun.awt.X11;
- import java.awt.AWTException;
- import java.awt.Component;
- import java.awt.Container;
+@@ -49,6 +49,15 @@ import javax.swing.event.CaretEvent;
+ import javax.swing.event.CaretListener;
+ import javax.swing.text.JTextComponent;
+ 
 +import java.awt.geom.Point2D;
 +import java.awt.FontMetrics;
 +import java.awt.Point;
- import java.awt.Rectangle;
- import java.awt.im.spi.InputMethodContext;
- import java.awt.peer.ComponentPeer;
- 
 +import java.lang.reflect.Field;
 +import java.lang.reflect.InvocationTargetException;
 +import java.lang.reflect.Method;
-+
 +import javax.swing.JTextArea;
 +import javax.swing.JTextField;
-+import javax.swing.text.JTextComponent;
 +
- import sun.awt.AWTAccessor;
- import sun.awt.X11InputMethod;
- 
-@@ -86,15 +97,29 @@ public class XInputMethod extends X11InputMethod {
- 
-     private static volatile long xicFocus;
+ /**
+  * Input Method Adapter for XIM (without Motif)
+  *
+@@ -171,6 +180,81 @@ public class XInputMethod extends X11InputMethod {
+         return releaseXICNative(pData);
+     }
  
 +    /**
 +     * fix fcitx position
@@ -205,25 +199,6 @@ index 2afd7bbefdb..2be981523ed 100644
 +        setXICFocusNative(((XComponentPeer)peer).getContentWindow(),true,true,result);
 +    }
 +
-     protected void setXICFocus(ComponentPeer peer,
-                                     boolean value, boolean active) {
-         if (peer == null) {
-             return;
-         }
-         xicFocus = ((XComponentPeer)peer).getContentWindow();
-+        int[] result = getOffXYRelateToFrame(peer ,value);
-         setXICFocusNative(((XComponentPeer)peer).getContentWindow(),
-                           value,
--                          active);
-+                          active,
-+                          result);
-     }
- 
-     public static long getXICFocus() {
-@@ -156,6 +181,69 @@ public class XInputMethod extends X11InputMethod {
-         return peer.getContentWindow();
-     }
- 
 +    protected int[] getOffXYRelateToFrame(ComponentPeer peer, boolean value)  {
 +        int[] result = null;
 +        if(value && this.awtFocussedComponent !=null && this.awtFocussedComponent instanceof JTextComponent){
@@ -287,19 +262,29 @@ index 2afd7bbefdb..2be981523ed 100644
 +        return result;
 +    }
 +
-     /*
-      * Native methods
-      */
-@@ -164,6 +252,6 @@ public class XInputMethod extends X11InputMethod {
-     private native boolean recreateXICNative(long window, long px11data, int ctxid);
+     private static volatile long xicFocus = 0;
+ 
+     protected void setXICFocus(ComponentPeer peer, boolean value, boolean active) {
+@@ -180,7 +264,7 @@ public class XInputMethod extends X11InputMethod {
+         xicFocus = ((XComponentPeer)peer).getContentWindow();
+         setXICFocusNative(((XComponentPeer)peer).getContentWindow(),
+                           value,
+-                          active);
++                          active, getOffXYRelateToFrame(peer ,value));
+ 
+         doesSupportMovingCandidatesNativeWindow = value && doesFocusedXICSupportMovingCandidatesNativeWindow();
+     }
+@@ -553,7 +637,7 @@ public class XInputMethod extends X11InputMethod {
+     private native boolean createXICNative(long window, boolean preferBelowTheSpot);
+     private native boolean recreateXICNative(long window, long px11data, int ctxid, boolean preferBelowTheSpot);
      private native int releaseXICNative(long px11data);
-     private native void setXICFocusNative(long window,
--                                    boolean value, boolean active);
-+                                    boolean value, boolean active, int[] offxy);
+-    private native void setXICFocusNative(long window, boolean value, boolean active);
++    private native void setXICFocusNative(long window, boolean value, boolean active, int[] offxy);
      private native void adjustStatusWindow(long window);
- }
+ 
+     private native boolean doesFocusedXICSupportMovingCandidatesNativeWindow();
 diff --git a/src/java.desktop/unix/classes/sun/awt/X11InputMethod.java b/src/java.desktop/unix/classes/sun/awt/X11InputMethod.java
-index 18e0ba1e7e4..34112b11db5 100644
+index d9bed439688..623af69478e 100644
 --- a/src/java.desktop/unix/classes/sun/awt/X11InputMethod.java
 +++ b/src/java.desktop/unix/classes/sun/awt/X11InputMethod.java
 @@ -33,6 +33,7 @@ import java.awt.AWTException;
@@ -351,10 +336,10 @@ index 18e0ba1e7e4..34112b11db5 100644
      protected abstract int releaseXIC();
      private static native boolean recreateX11InputMethod();
 diff --git a/src/java.desktop/unix/native/libawt_xawt/awt/awt_InputMethod.c b/src/java.desktop/unix/native/libawt_xawt/awt/awt_InputMethod.c
-index aafb1af3d81..ff3978dd043 100644
+index da112303668..e42fefd4e75 100644
 --- a/src/java.desktop/unix/native/libawt_xawt/awt/awt_InputMethod.c
 +++ b/src/java.desktop/unix/native/libawt_xawt/awt/awt_InputMethod.c
-@@ -427,13 +427,17 @@ setXICFocus(XIC ic, unsigned short req)
+@@ -514,13 +514,17 @@ setXICFocus(XIC ic, unsigned short req)
   * Sets the focus window to the given XIC.
   */
  static void
@@ -374,7 +359,7 @@ index aafb1af3d81..ff3978dd043 100644
  }
  
  /*
-@@ -1469,7 +1473,8 @@ Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
+@@ -1637,7 +1641,8 @@ Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
                                                  jobject this,
                                                  jlong w,
                                                  jboolean req,
@@ -384,7 +369,7 @@ index aafb1af3d81..ff3978dd043 100644
  {
      X11InputMethodData *pX11IMData;
      AWT_LOCK();
-@@ -1490,7 +1495,17 @@ Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
+@@ -1658,7 +1663,17 @@ Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
           * On Solaris2.6, setXICWindowFocus() has to be invoked
           * before setting focus.
           */
